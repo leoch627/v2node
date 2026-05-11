@@ -183,8 +183,9 @@ func buildVLessFallbacks(raw json.RawMessage) []*coreConf.VLessInboundFallback {
 	if len(raw) == 0 {
 		return nil
 	}
+	parsedRaw := extractPanelFallbacksToBytes(raw)
 	var fallbacks []*coreConf.VLessInboundFallback
-	if err := json.Unmarshal(raw, &fallbacks); err != nil {
+	if err := json.Unmarshal(parsedRaw, &fallbacks); err != nil {
 		return nil
 	}
 	return fallbacks
@@ -571,8 +572,9 @@ func buildTrojanFallbacks(raw json.RawMessage) []*coreConf.TrojanInboundFallback
 	if len(raw) == 0 {
 		return nil
 	}
+	parsedRaw := extractPanelFallbacksToBytes(raw)
 	var fallbacks []*coreConf.TrojanInboundFallback
-	if err := json.Unmarshal(raw, &fallbacks); err != nil {
+	if err := json.Unmarshal(parsedRaw, &fallbacks); err != nil {
 		return nil
 	}
 	return fallbacks
