@@ -19,7 +19,10 @@ on:
       - ".github/workflows/release.yml"
   release:
     types: [published]
-
+    
+permissions:
+  contents: write
+  
 jobs:
 
   build:
