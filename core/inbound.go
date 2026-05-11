@@ -24,6 +24,15 @@ type NetworkSettingsProxyProtocol struct {
 	AcceptProxyProtocol bool `json:"acceptProxyProtocol"`
 }
 
+type vlessInboundSettings struct {
+	Decryption string                           `json:"decryption"`
+	Fallbacks  []*coreConf.VLessInboundFallback `json:"fallbacks,omitempty"`
+}
+
+type trojanInboundSettings struct {
+	Fallbacks []*coreConf.TrojanInboundFallback `json:"fallbacks,omitempty"`
+}
+
 func (v *V2Core) removeInbound(tag string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -178,6 +187,34 @@ func buildInbound(nodeInfo *panel.NodeInfo, tag string) (*core.InboundHandlerCon
 	return in.Build()
 }
 
+// buildVLessFallbacks converts fallback config from panel into Xray VLessInboundFallback list.
+func buildVLessFallbacks(raw json.RawMessage) ([]*coreConf.VLessInboundFallback, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	parsedRaw, err := extractPanelFallbacksToBytes(raw)
+	if err != nil {
+		return nil, err
+	}
+	var fallbacks []*coreConf.VLessInboundFallback
+	if err := json.Unmarshal(parsedRaw, &fallbacks); err != nil {
+		return nil, fmt.Errorf("unmarshal vless fallbacks: %w", err)
+	}
+	return fallbacks, nil
+}
+
+func extractFallbacksRaw(v *panel.CommonNode) (json.RawMessage, string) {
+	if len(v.NetworkSettings) > 0 {
+		var ns map[string]json.RawMessage
+		if err := json.Unmarshal(v.NetworkSettings, &ns); err == nil {
+			if fbRaw, ok := ns["fallbacks"]; ok {
+				return fbRaw, "network_settings.fallbacks"
+			}
+		}
+	}
+	return nil, ""
+}
+
 func buildVLess(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig) error {
 	v := nodeInfo.Common
 	inbound.Protocol = "vless"
@@ -201,9 +238,20 @@ func buildVLess(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig)
 			return fmt.Errorf("vless decryption method %s is not support", nodeInfo.Common.Encryption)
 		}
 	}
-	s, err := json.Marshal(&coreConf.VLessInboundConfig{
+	var fallbacks []*coreConf.VLessInboundFallback
+	if fbRaw, source := extractFallbacksRaw(v); len(fbRaw) > 0 {
+		parsedFallbacks, err := buildVLessFallbacks(fbRaw)
+		if err != nil {
+			return fmt.Errorf("parse vless %s error: %w", source, err)
+		}
+		fallbacks = parsedFallbacks
+	}
+
+	vlessConfig := vlessInboundSettings{
 		Decryption: decryption,
-	})
+		Fallbacks:  fallbacks,
+	}
+	s, err := json.Marshal(vlessConfig)
 	if err != nil {
 		return fmt.Errorf("marshal vless config error: %s", err)
 	}
@@ -295,7 +343,20 @@ func buildVMess(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig)
 func buildTrojan(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig) error {
 	inbound.Protocol = "trojan"
 	v := nodeInfo.Common
-	s, err := json.Marshal(&coreConf.TrojanServerConfig{})
+
+	var fallbacks []*coreConf.TrojanInboundFallback
+	if fbRaw, source := extractFallbacksRaw(v); len(fbRaw) > 0 {
+		parsedFallbacks, err := buildTrojanFallbacks(fbRaw)
+		if err != nil {
+			return fmt.Errorf("parse trojan %s error: %w", source, err)
+		}
+		fallbacks = parsedFallbacks
+	}
+
+	trojanConfig := trojanInboundSettings{
+		Fallbacks: fallbacks,
+	}
+	s, err := json.Marshal(trojanConfig)
 	if err != nil {
 		return fmt.Errorf("marshal trojan settings error: %s", err)
 	}
@@ -518,4 +579,19 @@ func buildAnyTLS(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig
 		return fmt.Errorf("marshal anytls settings error: %s", err)
 	}
 	return nil
+}
+
+func buildTrojanFallbacks(raw json.RawMessage) ([]*coreConf.TrojanInboundFallback, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	parsedRaw, err := extractPanelFallbacksToBytes(raw)
+	if err != nil {
+		return nil, err
+	}
+	var fallbacks []*coreConf.TrojanInboundFallback
+	if err := json.Unmarshal(parsedRaw, &fallbacks); err != nil {
+		return nil, fmt.Errorf("unmarshal trojan fallbacks: %w", err)
+	}
+	return fallbacks, nil
 }
