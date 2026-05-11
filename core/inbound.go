@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	panel "github.com/wyx2685/v2node/api/v2board"
+	panel "github.com/leoch627/v2node/api/v2board"
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/features/inbound"
@@ -214,10 +214,13 @@ func buildVLess(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig)
 		}
 	}
 	fallbacks := buildVLessFallbacks(v.TlsSettings.Fallbacks)
-	s, err := json.Marshal(&coreConf.VLessInboundConfig{
-		Decryption: decryption,
-		Fallbacks:  fallbacks,
-	})
+	vlessConfig := map[string]interface{}{
+		"decryption": decryption,
+	}
+	if len(fallbacks) > 0 {
+		vlessConfig["fallbacks"] = fallbacks
+	}
+	s, err := json.Marshal(vlessConfig)
 	if err != nil {
 		return fmt.Errorf("marshal vless config error: %s", err)
 	}

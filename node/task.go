@@ -6,9 +6,9 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	panel "github.com/wyx2685/v2node/api/v2board"
-	"github.com/wyx2685/v2node/common/task"
-	vCore "github.com/wyx2685/v2node/core"
+	panel "github.com/leoch627/v2node/api/v2board"
+	"github.com/leoch627/v2node/common/task"
+	vCore "github.com/leoch627/v2node/core"
 )
 
 func (c *Controller) startTasks(node *panel.NodeInfo) {
