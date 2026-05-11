@@ -178,6 +178,18 @@ func buildInbound(nodeInfo *panel.NodeInfo, tag string) (*core.InboundHandlerCon
 	return in.Build()
 }
 
+// buildVLessFallbacks converts fallback config from panel into Xray VLessInboundFallback list
+func buildVLessFallbacks(raw json.RawMessage) []*coreConf.VLessInboundFallback {
+	if len(raw) == 0 {
+		return nil
+	}
+	var fallbacks []*coreConf.VLessInboundFallback
+	if err := json.Unmarshal(raw, &fallbacks); err != nil {
+		return nil
+	}
+	return fallbacks
+}
+
 func buildVLess(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig) error {
 	v := nodeInfo.Common
 	inbound.Protocol = "vless"
@@ -201,8 +213,10 @@ func buildVLess(nodeInfo *panel.NodeInfo, inbound *coreConf.InboundDetourConfig)
 			return fmt.Errorf("vless decryption method %s is not support", nodeInfo.Common.Encryption)
 		}
 	}
+	fallbacks := buildVLessFallbacks(v.TlsSettings.Fallbacks)
 	s, err := json.Marshal(&coreConf.VLessInboundConfig{
 		Decryption: decryption,
+		Fallbacks:  fallbacks,
 	})
 	if err != nil {
 		return fmt.Errorf("marshal vless config error: %s", err)
